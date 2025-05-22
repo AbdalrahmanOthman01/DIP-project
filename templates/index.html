@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>DIP - project</title>
+    <link rel="stylesheet" href="../static/css/styles.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+
+<body class="bg-gradient" data-theme="light">
+    <!-- Loader Overlay -->
+    <div id="loader-overlay">
+        <div class="loader-text">
+            <span id="loader-typed"></span>
+            <span class="loader-cursor">|</span>
+        </div>
+    </div>
+    <!-- Theme Toggle Button -->
+    <button id="theme-toggle" class="theme-toggle-btn" aria-label="Toggle dark mode">
+        <span id="theme-icon">🌙</span>
+    </button>
+    <div class="main-container">
+        <header>
+            <h1 class="title">🖼️ Digital Image Processing Toolbox</h1>
+        </header>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        <div class="flash {{ messages[0][0] }}">{{ messages[0][1] }}</div>
+        {% endif %}
+        {% endwith %}
+        <form method="post" enctype="multipart/form-data" class="glass-card form-flex">
+            <div class="form-group file-group">
+                <label for="image" class="file-label" tabindex="0">
+                    <span class="icon-upload"></span>
+                    <span class="file-label-text">Choose Image</span>
+                    <input class="file-input" type="file" name="image" id="image" accept="image/*">
+                </label>
+                <span id="file-chosen" class="file-chosen">No file chosen</span>
+                {% if uploaded_image %}
+                <button name="clear_image" class="btn-clear" type="submit" value="1" title="Clear Image">❌</button>
+                {% endif %}
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="operation-tabs">
+                    <span class="icon">🛠️</span> Select Operation
+                </label>
+                <input type="hidden" name="operation" id="operation-input" value="{{ selected_operation or '' }}"
+                    required>
+                <div class="tabs-outer-container">
+                    <div class="tabs-inner-container" id="operation-tabs">
+                        <div class="tabs-list" role="tablist">
+                            {% set icons = {
+                            "Point Operations": "🔢",
+                            "Color Operations": "🌈",
+                            "Histogram Operations": "📊",
+                            "Spatial Filters": "🔲",
+                            "Noise & Restoration": "✨",
+                            "Thresholding & Segmentation": "🎯",
+                            "Edge Detection": "✂️",
+                            "Morphological Operations": "🧩",
+                            "Extra": "🧰"
+                            } %}
+                            {% set op_icons = {
+                            "Addition": "➕",
+                            "Subtraction": "➖",
+                            "Division": "➗",
+                            "Complement": "🔄",
+                            "Change Lighting": "💡",
+                            "Change Red": "🟥",
+                            "Swap R<->G": "🔃",
+                                "Eliminate Red": "🚫🟥",
+                                "Histogram Stretch": "📈",
+                                "Histogram Equalize": "📉",
+                                "Average Filter": "🔳",
+                                "Laplacian Filter": "🟪",
+                                "Max Filter": "⬆️",
+                                "Min Filter": "⬇️",
+                                "Median Filter": "📏",
+                                "Mode Filter": "🎲",
+                                "Add Salt & Pepper": "🧂",
+                                "Remove SP Avg": "🧹",
+                                "Remove SP Median": "🧽",
+                                "Remove SP Outlier": "🚫",
+                                "Add Gaussian": "🌫️",
+                                "Remove Gaussian Avg": "🧹",
+                                "Threshold Basic": "⚪",
+                                "Threshold Auto": "⚙️",
+                                "Threshold Adaptive": "🧠",
+                                "Sobel Edge": "🖊️",
+                                "Canny Edge": "✂️",
+                                "Dilate": "⬆️",
+                                "Erode": "⬇️",
+                                "Opening": "🚪",
+                                "Internal Boundary": "⬛",
+                                "External Boundary": "⬜",
+                                "Morph Gradient": "🌈",
+                                "Blur": "💧",
+                                "Sharpen": "🔪",
+                                "Hist Eq": "📊",
+                                "Rotate": "🔄"
+                                } %}
+                                {% for topic in topics.keys() %}
+                                <button type="button" class="tab-btn{% if loop.first %} active{% endif %}" role="tab"
+                                    aria-selected="{{ 'true' if loop.first else 'false' }}"
+                                    aria-controls="panel-{{ loop.index }}" id="tab-{{ loop.index }}"
+                                    tabindex="{{ 0 if loop.first else -1 }}">
+                                    {{ icons[topic] }} {{ topic }}
+                                </button>
+                                {% endfor %}
+                                <div class="tab-glider"></div>
+                        </div>
+                    </div>
+                    {% for topic, ops in topics.items() %}
+                    <div id="panel-{{ loop.index }}" class="tab-panel{% if loop.first %} active{% endif %} glass-card"
+                        role="tabpanel" aria-labelledby="tab-{{ loop.index }}" tabindex="0" {% if not loop.first
+                        %}hidden{% endif %}>
+                        <div class="operations-list">
+                            {% for op, fn in ops.items() %}
+                            <button type="button"
+                                class="operation-button{% if selected_operation == op %} selected{% endif %}"
+                                data-operation="{{ op }}"
+                                aria-pressed="{{ 'true' if selected_operation == op else 'false' }}">
+                                {{ op_icons.get(op, "🔹") }} {{ op }}
+                            </button>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            <button type="submit" class="btn-main"><span class="icon">✨</span> Apply Operation</button>
+        </form>
+        {% if uploaded_image and result_image %}
+        <div class="images-row">
+            <div class="img-card">
+                <h3><span class="icon">🖼️</span> Original Image</h3>
+                <img src="{{ uploaded_image }}" class="img-fluid img-animate" alt="Original Image">
+            </div>
+            <div class="img-card">
+                <h3><span class="icon">🎨</span> Processed Image</h3>
+                <img src="{{ result_image }}" class="img-fluid img-animate" alt="Processed Image">
+                <a href="{{ url_for('download') }}" class="btn-save"><span class="icon">💾</span> Save Result</a>
+            </div>
+        </div>
+        {% endif %}
+        <footer>
+            <p>Made with <span class="heart">❤️</span> for Digital Image Processing</p>
+        </footer>
+    </div>
+    <script>
+        // --- Begin Immediate Theme Application (to prevent FOUC) ---
+        (function () {
+            const sunIcon = '☀️'; // Icon to show when in dark mode (click for light)
+            const moonIcon = '🌙'; // Icon to show when in light mode (click for dark)
+            const body = document.body;
+
+            // This function will be called to apply the theme and update the icon
+            window.applyGlobalTheme = function (theme) {
+                const themeIconElement = document.getElementById('theme-icon');
+                if (theme === 'dark') {
+                    body.classList.add('dark-mode');
+                    if (themeIconElement) themeIconElement.textContent = sunIcon;
+                } else {
+                    body.classList.remove('dark-mode');
+                    if (themeIconElement) themeIconElement.textContent = moonIcon;
+                }
+                try {
+                    localStorage.setItem('theme', theme);
+                } catch (e) {
+                    console.warn("Could not save theme to localStorage:", e);
+                }
+            };
+
+            let currentTheme = 'light'; // Default to light
+            try {
+                currentTheme = localStorage.getItem('theme');
+            } catch (e) {
+                console.warn("Could not read theme from localStorage:", e);
+            }
+
+            if (!currentTheme) { // If no theme in localStorage, use system preference
+                currentTheme = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+            }
+            window.applyGlobalTheme(currentTheme);
+
+            // Listen for system theme changes (if user hasn't set a preference)
+            if (window.matchMedia) {
+                window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+                    const storedTheme = localStorage.getItem('theme');
+                    if (!storedTheme) { // Only apply if no theme is explicitly set by the user
+                        window.applyGlobalTheme(e.matches ? 'dark' : 'light');
+                    }
+                });
+            }
+        })();
+        // --- End Immediate Theme Application ---
+
+        // --- Begin DOMContentLoaded ---
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- Loader ---
+            const loaderText = "DIP - project"; // Customize as needed
+            const loaderTypedElement = document.getElementById("loader-typed");
+            const loaderCursorElement = document.querySelector(".loader-cursor");
+            const mainContainerElement = document.querySelector(".main-container");
+            const loaderOverlayElement = document.getElementById("loader-overlay");
+            let loaderCharIndex = 0;
+
+            function typeLoader() {
+                if (loaderTypedElement && loaderCharIndex < loaderText.length) {
+                    loaderTypedElement.textContent += loaderText.charAt(loaderCharIndex);
+                    loaderCharIndex++;
+                    setTimeout(typeLoader, 90);
+                } else {
+                    if (loaderCursorElement) loaderCursorElement.style.animation = "blink 0.8s step-end infinite";
+                    setTimeout(() => {
+                        if (loaderOverlayElement) loaderOverlayElement.classList.add("fade-out");
+                        setTimeout(() => {
+                            if (loaderOverlayElement) loaderOverlayElement.style.display = "none";
+                            if (mainContainerElement) mainContainerElement.style.opacity = 1;
+                        }, 800); // Matches fade-out duration
+                    }, 700); // Delay after typing finishes
+                }
+            }
+
+            if (mainContainerElement) mainContainerElement.style.opacity = 0; // Hide main content initially
+            if (loaderTypedElement && loaderCursorElement && loaderOverlayElement) {
+                typeLoader();
+            } else {
+                // If loader elements are missing, ensure content is visible and overlay is hidden
+                if (mainContainerElement) mainContainerElement.style.opacity = 1;
+                if (loaderOverlayElement) loaderOverlayElement.style.display = "none";
+                console.warn("Loader elements not found. Skipping loader animation.");
+            }
+
+            // --- Show chosen file name ---
+            const imageInputElement = document.getElementById('image');
+            const fileChosenElement = document.getElementById('file-chosen');
+            if (imageInputElement && fileChosenElement) {
+                imageInputElement.addEventListener('change', function () {
+                    const fileName = this.files && this.files[0] ? this.files[0].name : "No file chosen";
+                    fileChosenElement.textContent = fileName;
+                });
+            }
+
+            // --- Theme Toggle Button ---
+            const themeToggleButton = document.getElementById('theme-toggle');
+            if (themeToggleButton) {
+                themeToggleButton.addEventListener('click', () => {
+                    const isCurrentlyDark = document.body.classList.contains('dark-mode');
+                    const newTheme = isCurrentlyDark ? 'light' : 'dark';
+                    window.applyGlobalTheme(newTheme); // Use the globally defined function
+                });
+            }
+
+            // --- Tabs with glider ---
+            const tabButtons = document.querySelectorAll('.tab-btn');
+            const tabPanels = document.querySelectorAll('.tab-panel');
+            const operationInputElement = document.getElementById('operation-input');
+            const operationButtons = document.querySelectorAll('.operation-button');
+            const gliderElement = document.querySelector('.tab-glider');
+            const tabsListElement = document.querySelector('.tabs-list');
+            const tabsInnerContainerElement = document.querySelector('.tabs-inner-container'); // Scrollable parent
+
+            if (tabButtons.length > 0 && tabsListElement && gliderElement) {
+                function moveGlider() {
+                    const activeTab = tabsListElement.querySelector('.tab-btn.active');
+                    if (activeTab) {
+                        // Position glider based on the active tab's offsetLeft and offsetWidth
+                        // relative to the tabsListElement (which should have position: relative)
+                        gliderElement.style.left = activeTab.offsetLeft + "px";
+                        gliderElement.style.width = activeTab.offsetWidth + "px";
+                    }
+                }
+
+                tabButtons.forEach((button, index) => {
+                    button.addEventListener('click', () => {
+                        // Deactivate all tabs and panels
+                        tabButtons.forEach(btn => {
+                            btn.classList.remove('active');
+                            btn.setAttribute('aria-selected', 'false');
+                            btn.setAttribute('tabindex', '-1');
+                        });
+                        tabPanels.forEach(panel => {
+                            panel.classList.remove('active');
+                            panel.setAttribute('hidden', '');
+                        });
+
+                        // Activate clicked tab and its panel
+                        button.classList.add('active');
+                        button.setAttribute('aria-selected', 'true');
+                        button.removeAttribute('tabindex');
+
+                        const panelId = button.getAttribute('aria-controls');
+                        if (panelId) {
+                            const panel = document.getElementById(panelId);
+                            if (panel) {
+                                panel.classList.add('active');
+                                panel.removeAttribute('hidden');
+                                // panel.focus(); // Optional: focus the panel or an element within it
+                            }
+                        }
+                        // Scroll the active tab into view if container is scrollable
+                        if (tabsInnerContainerElement) {
+                            button.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+                        }
+                        moveGlider();
+                    });
+
+                    // Keyboard navigation
+                    button.addEventListener('keydown', (e) => {
+                        let newIndex;
+                        if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+                            e.preventDefault(); // Prevent default page scroll
+                            if (e.key === 'ArrowRight') {
+                                newIndex = (index + 1) % tabButtons.length;
+                            } else { // ArrowLeft
+                                newIndex = (index - 1 + tabButtons.length) % tabButtons.length;
+                            }
+                            tabButtons[newIndex].focus();
+                            // Optional: Automatically click/activate tab on arrow navigation
+                            // tabButtons[newIndex].click();
+                        }
+                    });
+                });
+
+                // Set initial active tab and glider position
+                let initiallyActiveTab = tabsListElement.querySelector('.tab-btn.active');
+                if (!initiallyActiveTab && tabButtons.length > 0) {
+                    initiallyActiveTab = tabButtons[0]; // Default to first tab if none are active
+                    initiallyActiveTab.classList.add('active');
+                    initiallyActiveTab.setAttribute('aria-selected', 'true');
+                    initiallyActiveTab.removeAttribute('tabindex');
+                    const panelId = initiallyActiveTab.getAttribute('aria-controls');
+                    if (panelId) {
+                        const panel = document.getElementById(panelId);
+                        if (panel) {
+                            panel.classList.add('active');
+                            panel.removeAttribute('hidden');
+                        }
+                    }
+                }
+                moveGlider(); // Initial glider position
+
+                window.addEventListener('resize', moveGlider);
+                if (tabsInnerContainerElement) { // Listen for scroll on the scrollable container
+                    tabsInnerContainerElement.addEventListener('scroll', moveGlider);
+                }
+
+            } else {
+                console.warn("Tab system core elements (.tab-btn, .tabs-list, .tab-glider) not found. Tabs not initialized.");
+            }
+
+            // --- Operation Selection ---
+            if (operationInputElement && operationButtons.length > 0) {
+                operationButtons.forEach(button => {
+                    button.addEventListener('click', () => {
+                        operationButtons.forEach(btn => {
+                            btn.classList.remove('selected');
+                            btn.setAttribute('aria-pressed', 'false');
+                        });
+                        button.classList.add('selected');
+                        button.setAttribute('aria-pressed', 'true');
+                        operationInputElement.value = button.dataset.operation || "";
+                    });
+                });
+
+                // Pre-select operation if value exists on page load
+                if (operationInputElement.value) {
+                    const preSelected = Array.from(operationButtons).find(btn => btn.dataset.operation === operationInputElement.value);
+                    if (preSelected) {
+                        preSelected.classList.add('selected');
+                        preSelected.setAttribute('aria-pressed', 'true');
+                    }
+                }
+            } else if (operationButtons.length > 0 && !operationInputElement) {
+                console.warn("Operation buttons found, but 'operation-input' element is missing.");
+            }
+
+        });
+        // --- End DOMContentLoaded ---
+    </script>
+
+</body>
+
+</html>
