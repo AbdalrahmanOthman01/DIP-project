@@ -3,7 +3,7 @@
 
 A web-based interactive toolbox for performing a variety of digital image processing operations, built using **Flask**, **OpenCV**, and **NumPy**. This project provides a clean and intuitive GUI where users can upload an image and apply several transformations and analysis techniques, grouped by category.
 
-![UI Preview](./path-to-your-screenshot.png)
+![UI Preview](https://drive.google.com/file/d/1smokiY-nWoP1Ddr8CkITL3kMzJQXEYR2/view?usp=drive_link)
 
 ## 🚀 Features
 
